@@ -1,0 +1,50 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: uiar-postgres
+    environment:
+      POSTGRES_DB: uiar_db
+      POSTGRES_USER: uiar_user
+      POSTGRES_PASSWORD: uiar_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - uiar-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U uiar_user -d uiar_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Spring Boot Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: uiar-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/uiar_db
+      SPRING_DATASOURCE_USERNAME: uiar_user
+      SPRING_DATASOURCE_PASSWORD: uiar_password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: true
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - uiar-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  uiar-network:
+    driver: bridge
