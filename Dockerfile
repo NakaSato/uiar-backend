@@ -1,68 +1,103 @@
-# Multi-stage build for AWS EC2 optimization
-# Stage 1: Build stage
-FROM openjdk:17-jdk-slim AS build
 
-# Set the working directory inside the container
+# Stage 1: Build stage
+FROM eclipse-temurin:17-jdk-alpine AS build
+
+# Set build arguments
+ARG MAVEN_OPTS="-XX:+TieredCompilation -XX:TieredStopAtLevel=1"
+ARG SKIP_TESTS=true
+
+# Set working directory
 WORKDIR /app
 
-# Copy the Maven wrapper and pom.xml
+# Copy Maven wrapper and configuration files
 COPY mvnw .
 COPY mvnw.cmd .
 COPY .mvn .mvn
 COPY pom.xml .
 
-# Make the Maven wrapper executable
+# Make Maven wrapper executable
 RUN chmod +x ./mvnw
 
-# Download dependencies (this layer will be cached if pom.xml doesn't change)
+# Download dependencies (cached layer)
 RUN ./mvnw dependency:go-offline -B
 
-# Copy the source code
+# Copy source code
 COPY src ./src
 
-# Build the application
-RUN ./mvnw clean package -DskipTests
+# Build application
+RUN if [ "$SKIP_TESTS" = "true" ]; then \
+        ./mvnw clean package -DskipTests -B; \
+    else \
+        ./mvnw clean package -B; \
+    fi
 
-# Stage 2: Runtime stage (optimized for AWS EC2)
-FROM openjdk:17-jre-slim
+# Stage 2: Runtime stage (minimal and secure)
+FROM eclipse-temurin:17-jre-alpine
 
-# Install useful tools for AWS EC2 debugging and monitoring
-RUN apt-get update && apt-get install -y \
-    curl \
-    wget \
-    netcat-traditional \
-    && rm -rf /var/lib/apt/lists/*
+# Metadata
+LABEL maintainer="UIAR Backend Team"
+LABEL version="1.0.0"
+LABEL description="UIAR Backend Spring Boot Application"
 
-# Create a non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+# Install essential tools for production monitoring
+RUN apk add --no-cache \
+    curl=8.5.0-r0 \
+    wget=1.21.4-r0 \
+    bash=5.2.15-r5 \
+    netcat-openbsd=1.219-r0 \
+    tzdata=2024a-r0 && \
+    # Set timezone
+    cp /usr/share/zoneinfo/UTC /etc/localtime && \
+    echo "UTC" > /etc/timezone
 
-# Set the working directory
+# Create non-root user for security
+RUN addgroup -g 1001 -S appuser && \
+    adduser -u 1001 -S appuser -G appuser
+
+# Set working directory
 WORKDIR /app
 
-# Copy the built JAR from the build stage
+# Copy JAR file from build stage
 COPY --from=build /app/target/*.jar app.jar
 
-# Change ownership to non-root user
-RUN chown -R appuser:appuser /app
+# Create necessary directories and set permissions
+RUN mkdir -p /app/logs /app/tmp && \
+    chown -R appuser:appuser /app && \
+    chmod 755 /app && \
+    chmod 644 /app/app.jar
+
+# Switch to non-root user
 USER appuser
 
-# Create logs directory
-RUN mkdir -p /app/logs
-
-# Expose the port that the application runs on
+# Expose application port
 EXPOSE 8080
 
-# Add health check for AWS EC2 load balancer
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8080/actuator/health || exit 1
+# Health check for container orchestration
+HEALTHCHECK --interval=30s \
+            --timeout=10s \
+            --start-period=60s \
+            --retries=3 \
+            CMD curl -f http://localhost:8080/actuator/health || exit 1
 
-# Set JVM options optimized for containerized environments
-ENV JAVA_OPTS="-XX:+UseContainerSupport \
+# Environment variables for JVM optimization
+ENV JAVA_OPTS="-server \
+               -XX:+UseContainerSupport \
                -XX:MaxRAMPercentage=75.0 \
                -XX:+UseG1GC \
                -XX:+UseStringDeduplication \
+               -XX:+OptimizeStringConcat \
+               -XX:+UseCompressedOops \
                -Djava.security.egd=file:/dev/./urandom \
-               -Dspring.profiles.active=prod"
+               -Djava.awt.headless=true \
+               -Dfile.encoding=UTF-8 \
+               -Duser.timezone=UTC"
 
-# Run the application
-CMD ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+# Spring Boot specific environment variables
+ENV SPRING_PROFILES_ACTIVE=prod
+ENV SERVER_PORT=8080
+
+# Application startup command
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]
+
+# Default command (can be overridden)
+CMD []
