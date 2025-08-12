@@ -72,14 +72,5 @@ jobs:
         ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'uiar-backend' }}
         IMAGE_TAG: ${{ steps.increment-git-tag.outputs.git-tag }}
       run: |
-        # Build Docker image
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
-        
-        # Push both versioned and latest tags
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        
-        echo "Image pushed to ECR:"
-        echo "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-        echo "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
