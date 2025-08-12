@@ -1,6 +1,6 @@
 
 # Stage 1: Build stage
-FROM eclipse-temurin:17-jdk-alpine AS build
+FROM eclipse-temurin:17-jdk AS build
 
 # Set build arguments
 ARG MAVEN_OPTS="-XX:+TieredCompilation -XX:TieredStopAtLevel=1"
@@ -32,7 +32,7 @@ RUN if [ "$SKIP_TESTS" = "true" ]; then \
     fi
 
 # Stage 2: Runtime stage (minimal and secure)
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-jre
 
 # Metadata
 LABEL maintainer="UIAR Backend Team"
@@ -40,19 +40,22 @@ LABEL version="1.0.0"
 LABEL description="UIAR Backend Spring Boot Application"
 
 # Install essential tools for production monitoring
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y \
     curl \
     wget \
     bash \
     netcat-openbsd \
     tzdata && \
     # Set timezone
-    cp /usr/share/zoneinfo/UTC /etc/localtime && \
-    echo "UTC" > /etc/timezone
+    ln -sf /usr/share/zoneinfo/UTC /etc/localtime && \
+    echo "UTC" > /etc/timezone && \
+    # Clean up
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S appuser && \
-    adduser -u 1001 -S appuser -G appuser
+RUN groupadd -g 1001 appuser && \
+    useradd -r -u 1001 -g appuser appuser
 
 # Set working directory
 WORKDIR /app
