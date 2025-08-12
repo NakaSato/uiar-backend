@@ -5,7 +5,7 @@ import com.gridtokenx.app.domain.entity.User;
 import com.gridtokenx.app.domain.repository.UserRepository;
 import com.gridtokenx.app.infrastructure.persistence.mapper.UserJpaMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  * Following the Adapter pattern and implementing both interfaces for clean
  * architecture
  */
-@Repository
+@Component
 @RequiredArgsConstructor
 public class UserRepositoryAdapter implements UserRepository, UserOutputPort {
 
