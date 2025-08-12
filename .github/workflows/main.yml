@@ -68,9 +68,16 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Auto Tagging of Releases
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         id: increment-git-tag
         run: |
           bash ./init-scripts/git_update.sh -v major
+          
+      - name: Debug tag output
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          echo "Generated tag: ${{ steps.increment-git-tag.outputs.git-tag }}"
+          echo "Using tag for Docker: ${{ steps.increment-git-tag.outputs.git-tag }}"
         
       - name: Build and push Docker image to ECR
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
