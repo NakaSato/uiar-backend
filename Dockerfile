@@ -41,11 +41,11 @@ LABEL description="UIAR Backend Spring Boot Application"
 
 # Install essential tools for production monitoring
 RUN apk add --no-cache \
-    curl=8.5.0-r0 \
-    wget=1.21.4-r0 \
-    bash=5.2.15-r5 \
-    netcat-openbsd=1.219-r0 \
-    tzdata=2024a-r0 && \
+    curl \
+    wget \
+    bash \
+    netcat-openbsd \
+    tzdata && \
     # Set timezone
     cp /usr/share/zoneinfo/UTC /etc/localtime && \
     echo "UTC" > /etc/timezone
