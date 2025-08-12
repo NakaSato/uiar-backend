@@ -63,14 +63,14 @@ jobs:
     - name: Auto Tagging of Releases
       id: increment-git-tag
       run: |
-        bash ./init-scripts/git_update.sh -v patch
+        bash ./init-scripts/git_update.sh -v major
       
     - name: Build and push Docker image to ECR
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'uiar-backend' }}
-        IMAGE_TAG: ${{ github.sha }}
+        IMAGE_TAG: ${{ steps.increment-git-tag.outputs.git-tag }}
       run: |
         # Build Docker image
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
