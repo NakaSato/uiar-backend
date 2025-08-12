@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ main, master ]
 
+# Add permissions for the workflow to push tags
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -60,7 +65,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+          aws-region: us-east-1
         
       - name: Login to Amazon ECR
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -84,9 +89,30 @@ jobs:
             echo "should-release=true" >> $GITHUB_OUTPUT
           fi
 
+      - name: Configure Git
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.check-release.outputs.should-release == 'true'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Verify Git Setup
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.check-release.outputs.should-release == 'true'
+        run: |
+          echo "🔍 Verifying Git setup..."
+          echo "Git user: $(git config user.name)"
+          echo "Git email: $(git config user.email)"
+          echo "Remote origin: $(git remote get-url origin)"
+          echo "Current branch: $(git branch --show-current)"
+          echo "GITHUB_TOKEN available: $([[ -n "$GITHUB_TOKEN" ]] && echo "Yes" || echo "No")"
+          
+          # Verify we can access the repo
+          git ls-remote --heads origin || echo "⚠️  Cannot access remote repository"
+
       - name: Auto Tagging of Releases
         if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.check-release.outputs.should-release == 'true'
         id: increment-git-tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           chmod +x ./init-scripts/git_update.sh
           bash ./init-scripts/git_update.sh -v auto
@@ -101,7 +127,7 @@ jobs:
         if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.check-release.outputs.should-release == 'true'
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'uiar-backend' }}
+          ECR_REPOSITORY: uiar-backend
           IMAGE_TAG: ${{ steps.increment-git-tag.outputs.git-tag }}
         run: |
           echo "🐳 Building Docker image with tag: ${{ steps.increment-git-tag.outputs.git-tag }}"

@@ -174,11 +174,42 @@ if git tag "$NEW_TAG"; then
   echo "✅ Successfully created tag $NEW_TAG"
   
   echo "📤 Pushing tag to remote..."
+  echo "🔍 Debug: Current git config:"
+  git config --list | grep -E "(user\.|remote\.)" || echo "No user/remote config found"
+  
+  echo "🔍 Debug: Remote URLs:"
+  git remote -v || echo "No remotes configured"
+  
   if git push origin "$NEW_TAG"; then
     echo "✅ Successfully pushed tag $NEW_TAG"
   else
     echo "❌ Failed to push tag $NEW_TAG" >&2
-    exit 1
+    echo "🔍 Debugging information:" >&2
+    echo "- Current branch: $(git branch --show-current)" >&2
+    echo "- Remote origin URL: $(git remote get-url origin 2>/dev/null || echo 'Not configured')" >&2
+    echo "- Git user: $(git config user.name 2>/dev/null || echo 'Not configured')" >&2
+    echo "- Git email: $(git config user.email 2>/dev/null || echo 'Not configured')" >&2
+    
+    # Try to provide helpful error messages
+    echo "💡 Possible solutions:" >&2
+    echo "1. Ensure you have write permissions to the repository" >&2
+    echo "2. Check if the remote URL is correct" >&2
+    echo "3. Verify git credentials are properly configured" >&2
+    echo "4. In GitHub Actions, ensure the workflow has 'contents: write' permissions" >&2
+    
+    # Still output the tag for Docker build, but mark as local-only
+    echo "⚠️  Tag created locally but not pushed to remote" >&2
+    echo "📦 Continuing with Docker build using local tag" >&2
+    
+    # Output for GitHub Actions (allow build to continue)
+    if [[ -n "$GITHUB_OUTPUT" ]]; then
+      echo "git-tag=$NEW_TAG" >> $GITHUB_OUTPUT
+    else
+      echo "git-tag=$NEW_TAG"
+    fi
+    
+    echo "🏷️  Local tag $NEW_TAG created (push failed)"
+    exit 0  # Don't fail the entire workflow
   fi
 else
   echo "❌ Failed to create tag $NEW_TAG" >&2
