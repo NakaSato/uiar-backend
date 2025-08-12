@@ -1,4 +1,4 @@
-name: Backend CI
+name: Build & Publish to AWS ECR
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ main, master ]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     
     steps:
