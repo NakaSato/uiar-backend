@@ -82,10 +82,10 @@ jobs:
           echo "Commit message: $COMMIT_MSG"
           
           if echo "$COMMIT_MSG" | grep -qE "\[(skip-release|no-release)\]"; then
-            echo "🚫 Release skipped due to commit message flag"
+            echo "Release skipped due to commit message flag"
             echo "should-release=false" >> $GITHUB_OUTPUT
           else
-            echo "✅ Release should be created"
+            echo "Release should be created"
             echo "should-release=true" >> $GITHUB_OUTPUT
           fi
 
@@ -98,7 +98,7 @@ jobs:
       - name: Verify Git Setup
         if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.check-release.outputs.should-release == 'true'
         run: |
-          echo "🔍 Verifying Git setup..."
+          echo "Verifying Git setup..."
           echo "Git user: $(git config user.name)"
           echo "Git email: $(git config user.email)"
           echo "Remote origin: $(git remote get-url origin)"
@@ -106,7 +106,7 @@ jobs:
           echo "GITHUB_TOKEN available: $([[ -n "$GITHUB_TOKEN" ]] && echo "Yes" || echo "No")"
           
           # Verify we can access the repo
-          git ls-remote --heads origin || echo "⚠️  Cannot access remote repository"
+          git ls-remote --heads origin || echo "Cannot access remote repository"
 
       - name: Auto Tagging of Releases
         if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.check-release.outputs.should-release == 'true'
@@ -130,14 +130,14 @@ jobs:
           ECR_REPOSITORY: uiar-backend
           IMAGE_TAG: ${{ steps.increment-git-tag.outputs.git-tag }}
         run: |
-          echo "🐳 Building Docker image with tag: ${{ steps.increment-git-tag.outputs.git-tag }}"
+          echo "Building Docker image with tag: ${{ steps.increment-git-tag.outputs.git-tag }}"
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
           
-          echo "📤 Pushing Docker image to ECR..."
+          echo "Pushing Docker image to ECR..."
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
           
-          echo "✅ Successfully pushed images:"
+          echo "Successfully pushed images:"
           echo "- $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           echo "- $ECR_REGISTRY/$ECR_REPOSITORY:latest"
