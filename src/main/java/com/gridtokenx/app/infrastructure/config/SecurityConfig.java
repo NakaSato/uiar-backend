@@ -36,6 +36,7 @@ public class SecurityConfig {
         .csrf(AbstractHttpConfigurer::disable)
         .authorizeHttpRequests(auth -> auth
             // Public endpoints
+            .requestMatchers("/", "/status", "/api").permitAll()
             .requestMatchers("/api/auth/**").permitAll()
             .requestMatchers("/api/health/**").permitAll()
             .requestMatchers("/actuator/health/**").permitAll()
@@ -55,7 +56,7 @@ public class SecurityConfig {
 
   @Bean
   public AuthenticationProvider authenticationProvider() {
-    DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+    var authProvider = new DaoAuthenticationProvider();
     authProvider.setUserDetailsService(userService);
     authProvider.setPasswordEncoder(passwordEncoder);
     return authProvider;
